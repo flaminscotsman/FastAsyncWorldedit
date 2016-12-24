@@ -29,8 +29,10 @@ import com.boydti.fawe.object.FaweQueue;
 import com.boydti.fawe.object.RegionWrapper;
 import com.boydti.fawe.object.RunnableVal;
 import com.boydti.fawe.util.MainUtil;
+import com.boydti.fawe.util.MathMan;
 import com.boydti.fawe.util.SetQueue;
 import com.sk89q.minecraft.util.commands.Command;
+import com.sk89q.minecraft.util.commands.CommandContext;
 import com.sk89q.minecraft.util.commands.CommandPermissions;
 import com.sk89q.minecraft.util.commands.Logging;
 import com.sk89q.worldedit.EditSession;
@@ -69,6 +71,9 @@ import com.sk89q.worldedit.util.command.binding.Range;
 import com.sk89q.worldedit.util.command.binding.Switch;
 import com.sk89q.worldedit.util.command.binding.Text;
 import com.sk89q.worldedit.util.command.parametric.Optional;
+import com.sk89q.worldedit.world.biome.BaseBiome;
+import com.sk89q.worldedit.world.biome.Biomes;
+import com.sk89q.worldedit.world.registry.BiomeRegistry;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -105,7 +110,7 @@ public class RegionCommands {
             max = 0
     )
     @CommandPermissions("worldedit.light.fix")
-    public void fixlighting(Player player, EditSession editSession) throws WorldEditException {
+    public void fixlighting(Player player) throws WorldEditException {
         FawePlayer fp = FawePlayer.wrap(player);
         final FaweLocation loc = fp.getLocation();
         Region selection = fp.getSelection();
@@ -125,7 +130,7 @@ public class RegionCommands {
             max = 0
     )
     @CommandPermissions("worldedit.light.fix")
-    public void getlighting(Player player, EditSession editSession) throws WorldEditException {
+    public void getlighting(Player player) throws WorldEditException {
         FawePlayer fp = FawePlayer.wrap(player);
         final FaweLocation loc = fp.getLocation();
         FaweQueue queue = SetQueue.IMP.getNewQueue(loc.world, true, false);
@@ -139,7 +144,7 @@ public class RegionCommands {
             max = 0
     )
     @CommandPermissions("worldedit.light.remove")
-    public void removelighting(Player player, EditSession editSession) {
+    public void removelighting(Player player) {
         FawePlayer fp = FawePlayer.wrap(player);
         final FaweLocation loc = fp.getLocation();
         Region selection = fp.getSelection();
@@ -159,7 +164,7 @@ public class RegionCommands {
             max = 1
     )
     @CommandPermissions("worldedit.light.set")
-    public void setlighting(Player player, EditSession editSession, @Selection Region region, int value) {
+    public void setlighting(Player player, @Selection Region region, int value) {
         FawePlayer fp = FawePlayer.wrap(player);
         final FaweLocation loc = fp.getLocation();
         final int cx = loc.x >> 4;
@@ -183,7 +188,7 @@ public class RegionCommands {
             max = 1
     )
     @CommandPermissions("worldedit.light.set")
-    public void setskylighting(Player player, EditSession editSession, @Selection Region region, int value) {
+    public void setskylighting(Player player, @Selection Region region, int value) {
         FawePlayer fp = FawePlayer.wrap(player);
         final FaweLocation loc = fp.getLocation();
         final int cx = loc.x >> 4;
@@ -283,6 +288,7 @@ public class RegionCommands {
         }
         int affected = editSession.replaceBlocks(region, from, Patterns.wrap(to));
         BBC.VISITOR_BLOCK.send(player, affected);
+        BBC.TIP_REPLACE_ID.or(BBC.TIP_REPLACE_LIGHT, BBC.TIP_REPLACE_MARKER, BBC.TIP_TAB_COMPLETE).send(player);
     }
 
     @Command(
@@ -312,7 +318,7 @@ public class RegionCommands {
     )
     @CommandPermissions("worldedit.region.set")
     @Logging(REGION)
-    public void set(Player player, EditSession editSession, LocalSession session, @Selection Region selection, Pattern to) throws WorldEditException {
+    public void set(Player player, LocalSession session, EditSession editSession, @Selection Region selection, Pattern to) throws WorldEditException {
         if (selection instanceof CuboidRegion && editSession.hasFastMode() && to instanceof BlockPattern) {
             try {
                 CuboidRegion cuboid = (CuboidRegion) selection;
@@ -368,7 +374,10 @@ public class RegionCommands {
             }
         }
         int affected = editSession.setBlocks(selection, Patterns.wrap(to));
-        BBC.OPERATION.send(player, affected);
+        if (affected != 0) {
+            BBC.OPERATION.send(player, affected);
+            BBC.TIP_FAST.or(BBC.TIP_CANCEL, BBC.TIP_MASK, BBC.TIP_MASK_ANGLE, BBC.TIP_SET_LINEAR, BBC.TIP_SURFACE_SPREAD, BBC.TIP_SET_HAND).send(player);
+        }
     }
 
     @Command(
@@ -477,7 +486,7 @@ public class RegionCommands {
     )
     @CommandPermissions("worldedit.region.move")
     @Logging(ORIENTATION_REGION)
-    public void move(Player player, EditSession editSession, LocalSession session,
+    public void move(Player player, LocalSession session, EditSession editSession,
                      @Selection Region region,
                      @Optional("1") @Range(min = 1) int count,
                      @Optional(Direction.AIM) @Direction Vector direction,
@@ -537,7 +546,7 @@ public class RegionCommands {
     )
     @CommandPermissions("worldedit.region.stack")
     @Logging(ORIENTATION_REGION)
-    public void stack(Player player, EditSession editSession, LocalSession session,
+    public void stack(Player player, LocalSession session, EditSession editSession,
                       @Selection Region region,
                       @Optional("1") @Range(min = 1) int count,
                       @Optional(Direction.AIM) @Direction Vector direction,
@@ -564,30 +573,39 @@ public class RegionCommands {
 
     @Command(
             aliases = { "/regen" },
-            usage = "",
+            usage = "[biome] [seed]",
             desc = "Regenerates the contents of the selection",
             help =
                     "Regenerates the contents of the current selection.\n" +
                             "This command might affect things outside the selection,\n" +
                             "if they are within the same chunk.",
             min = 0,
-            max = 0
+            max = 2
     )
     @CommandPermissions("worldedit.regen")
     @Logging(REGION)
-    public void regenerateChunk(Player player, LocalSession session, EditSession editSession, @Selection Region region) throws WorldEditException {
+    public void regenerateChunk(Player player, LocalSession session, EditSession editSession, @Selection Region region, CommandContext args) throws WorldEditException {
         Mask mask = session.getMask();
         Mask sourceMask = session.getSourceMask();
-        try {
-            session.setMask((Mask) null);
-            session.setSourceMask((Mask) null);
-            player.getWorld().regenerate(region, editSession);
-        } finally {
-            session.setMask(mask);
-            session.setSourceMask(mask);
-
+        session.setMask((Mask) null);
+        session.setSourceMask((Mask) null);
+        BaseBiome biome = null;
+        if (args.argsLength() >= 1) {
+            BiomeRegistry biomeRegistry = player.getWorld().getWorldData().getBiomeRegistry();
+            List<BaseBiome> knownBiomes = biomeRegistry.getBiomes();
+            biome = Biomes.findBiomeByName(knownBiomes, args.getString(0), biomeRegistry);
         }
-        BBC.COMMAND_REGEN.send(player);
+        Long seed = args.argsLength() != 2 || !MathMan.isInteger(args.getString(1)) ? null : Long.parseLong(args.getString(1));
+        editSession.regenerate(region, biome, seed);
+        session.setMask(mask);
+        session.setSourceMask(mask);
+        if (biome == null) {
+            BBC.COMMAND_REGEN_0.send(player);
+        } else if (seed == null) {
+            BBC.COMMAND_REGEN_1.send(player);
+        } else {
+            BBC.COMMAND_REGEN_2.send(player);
+        }
     }
 
     @Command(

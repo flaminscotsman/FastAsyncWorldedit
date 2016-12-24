@@ -4,6 +4,7 @@ import com.boydti.fawe.Fawe;
 import com.boydti.fawe.configuration.MemorySection;
 import com.boydti.fawe.configuration.file.YamlConfiguration;
 import com.boydti.fawe.object.FawePlayer;
+import com.boydti.fawe.object.PseudoRandom;
 import com.boydti.fawe.object.RunnableVal3;
 import com.boydti.fawe.util.MainUtil;
 import com.boydti.fawe.util.StringMan;
@@ -55,12 +56,21 @@ public enum BBC {
     TRANSFORM_DISABLED("Global transform disabled", "WorldEdit.General"),
     TRANSFORM("Global transform set", "WorldEdit.General"),
 
-    COMMAND_COPY("%s0 blocks were copied (Note: lazycopy is faster)", "WorldEdit.Copy"),
-    COMMAND_CUT("%s0 blocks were cut", "WorldEdit.Cut"),
-    COMMAND_PASTE("The clipboard has been pasted at %s0", "WorldEdit.Paste"),
+    COMMAND_COPY("%s0 blocks were copied.", "WorldEdit.Copy"),
+
+
+    COMMAND_CUT_SLOW("%s0 blocks were cut.\nTip: lazycut is safer", "WorldEdit.Cut"),
+    COMMAND_CUT_LAZY("%s0 blocks will be removed on paste", "WorldEdit.Cut"),
+
+    COMMAND_PASTE("The clipboard has been pasted at %s0\nTip: Paste on click with &c//br copypaste", "WorldEdit.Paste"),
+
+
     COMMAND_ROTATE("The clipboard has been rotated", "WorldEdit.Rotate"),
+
     COMMAND_FLIPPED("The clipboard has been flipped", "WorldEdit.Flip"),
-    COMMAND_REGEN("Region regenerated.", "WorldEdit.Regen"),
+    COMMAND_REGEN_0("Region regenerated.\nTip: Use a biome with /regen [biome]", "WorldEdit.Regen"),
+    COMMAND_REGEN_1("Region regenerated.\nTip: Use a seed with /regen [biome] [seed]", "WorldEdit.Regen"),
+    COMMAND_REGEN_2("Region regenerated.", "WorldEdit.Regen"),
     COMMAND_TREE("%s0 trees created.", "WorldEdit.Tree"),
     COMMAND_FLORA("%s0 flora created.", "WorldEdit.Flora"),
     COMMAND_HISTORY_CLEAR("History cleared", "WorldEdit.History"),
@@ -72,6 +82,7 @@ public enum BBC {
     OPERATION("Operation queued (%s0)", "WorldEdit.Operation"),
 
     SELECTION_WAND("Left click: select pos #1; Right click: select pos #2", "WorldEdit.Selection"),
+
     SELECTION_WAND_DISABLE("Edit wand disabled.", "WorldEdit.Selection"),
     SELECTION_WAND_ENABLE("Edit wand enabled.", "WorldEdit.Selection"),
     SELECTION_CHUNK("Chunk selected (%s0)", "WorldEdit.Selection"),
@@ -85,7 +96,6 @@ public enum BBC {
     SELECTION_OUTSET("Region outset", "WorldEdit.Selection"),
     SELECTION_SHIFT("Region shifted", "WorldEdit.Selection"),
     SELECTION_CLEARED("Selection cleared", "WorldEdit.Selection"),
-    SELECTION_NONE("Make a region selection first", "WorldEdit.Selection"),
 
     BRUSH_NONE("You aren't holding a brush!", "WorldEdit.Brush"),
     BRUSH_BUTCHER("Butcher brush equiped (%s0)", "WorldEdit.Brush"),
@@ -95,7 +105,7 @@ public enum BBC {
     BRUSH_GRAVITY("Gravity brush equipped (%s0)", "WorldEdit.Brush"),
     BRUSH_HEIGHT("Height brush equipped (%s0)", "WorldEdit.Brush"),
     BRUSH_TRY_OTHER("&cFAWE adds other, more suitable brushes e.g.\n&8 - &7//br height [radius=5] [#clipboard|file=null] [rotation=0] [yscale=1.00]", "WorldEdit.Brush"),
-    BRUSH_COPY("Copy brush equipped (%s0)", "WorldEdit.Brush"),
+    BRUSH_COPY("Copy brush equipped (%s0). Left click the base of an object to copy, right click to paste. Increase the brush radius if necessary.", "WorldEdit.Brush"),
     BRUSH_COMMAND("Command brush equipped (%s0)", "WorldEdit.Brush"),
     BRUSH_HEIGHT_INVALID("Invalid height map file (%s0)", "WorldEdit.Brush"),
     BRUSH_SMOOTH("Smooth brush equipped (%s0 x %s1 using %s2).", "WorldEdit.Brush"),
@@ -220,14 +230,54 @@ public enum BBC {
     SEL_MAX("%s0 points maximum.", "Selection"),
     SEL_FUZZY("Fuzzy selector: Left click to select all contingent blocks, right click to add", "Selection"),
     SEL_CONVEX_POLYHEDRAL("Convex polyhedral selector: Left click=First vertex, right click to add more.", "Selection"),
-    SEL_LIST("For a list of selection types use:&c //sel", "Selection"),
+    SEL_LIST("For a list of selection types use:&c //sel list", "Selection"),
     SEL_MODES("Select one of the modes below:", "Selection"),
 
+    TIP_SEL_LIST("Tip: See the different selection modes with &c//sel list", "Tips"),
+    TIP_SELECT_CONNECTED("Tip: Select all connected blocks with //sel fuzzy", "Tips"),
+    TIP_SET_POS1("Tip: Use pos1 as a pattern with &c//set pos1", "Tips"),
+    TIP_FARWAND("Tip: Select distant points with &c//farwand", "Tips"),
 
-    TIP_SEL_FUZZY("Tip: See the different selection modes with `//sel list`", "Tips"),
-    TIP_CANCEL("Tip: You can cancel an edit with `//cancel`", "Tips"),
-    TIP_DOWNLOAD("Tip: Download your clipboard with `//download`", "Tips"),
-    TIP_BRUSH("Tip: See all the cool brushes with `//br`", "Tips"),
+    // set
+    TIP_FAST("&7Tip: Set fast and without undo using &c//fast", "Tips"),
+    TIP_CANCEL("&7Tip: You can &c//cancel &7an edit in progress", "Tips"),
+    TIP_MASK("&7Tip: Set a global destination mask with &c/gmask", "Tips"),
+    TIP_MASK_ANGLE("Tip: Replace upward slopes of 3-20 blocks using&c //replace /-20:-3 bedrock", "Tips"),
+    TIP_SET_LINEAR("&7Tip: Set blocks linearly with&c //set #l3d:wood,bedrock", "Tips"),
+    TIP_SURFACE_SPREAD("&7Tip: Spread a flat surface with&c //set #surfacespread:5:0:5:#existing", "Tips"),
+    TIP_SET_HAND("&7Tip: Use your current hand with &c//set hand", "Tips"),
+
+    // replace
+    TIP_REPLACE_ID("&7Tip: Replace only the block id:&c //replace woodenstair #id:cobblestair", "Tips"),
+    TIP_REPLACE_LIGHT("Tip: Remove light sources with&c //replace #brightness:1:15 0", "Tips"),
+    TIP_TAB_COMPLETE("Tip: The replace command supports tab completion", "Tips"),
+
+    // clipboard
+    TIP_FLIP("Tip: Mirror with &c//flip", "Tips"),
+    TIP_DEFORM("Tip: Reshape with &c//deform", "Tips"),
+    TIP_TRANSFORM("Tip: Set a transform with &c//gtransform", "Tips"),
+    TIP_COPYPASTE("Tip: Paste on click with &c//br copypaste", "Tips"),
+    TIP_SOURCE_MASK("Tip: Set a source mask with &c/gsmask <mask>&7", "Tips"),
+    TIP_REPLACE_MARKER("Tip: Replace a block with your full clipboard using &c//replace wool #fullcopy", "Tips"),
+    TIP_PASTE("Tip: Place with &c//paste", "Tips"),
+    TIP_LAZYCOPY("Tip: lazycopy is faster", "Tips"),
+    TIP_DOWNLOAD("Tip: Try out &c//download", "Tips"),
+    TIP_ROTATE("Tip: Orientate with &c//rotate", "Tips"),
+    TIP_COPY_PATTERN("Tip: To use as a pattern try &c#copy", "Tips"),
+
+    // brush
+    TIP_BRUSH_SPLINE("&7Tip The spline &c//brush &7connects multiple shapes together", "Tips"),
+    TIP_BRUSH_HEIGHT("&7Tip: The height &c//brush &7smoothly raises or lowers terrain", "Tips"),
+    TIP_BRUSH_COPY("&7Tip: The copypaste &c//brush &7allows you to easily copy and paste objects", "Tips"),
+    TIP_BRUSH_MASK("&7Tip: Set a brush destination mask with &c/mask", "Tips"),
+    TIP_BRUSH_MASK_SOURCE("&7Tip: Set a brush source mask with &c/smask", "Tips"),
+    TIP_BRUSH_TRANSFORM("&7Tip: Set a brush transform with &c/transform", "Tips"),
+    TIP_BRUSH_RELATIVE("&7Tip: Use a relative clipboard pattern with //br sphere #~:#copy", "Tips"),
+    TIP_BRUSH_COMMAND("&7Tip: Try the command brush &c//br cmd <radius> <cmd1;cmd2>", "Tips"),
+
+
+
+
 
 
 
@@ -415,6 +465,11 @@ public enum BBC {
 
     public String getCat() {
         return this.cat;
+    }
+
+    public BBC or(BBC... others) {
+        int index = PseudoRandom.random.nextInt(others.length + 1);
+        return index == 0 ? this : others[index - 1];
     }
 
     public void send(Object actor, final Object... args) {

@@ -25,17 +25,25 @@ import com.sk89q.worldedit.LocalSession;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.blocks.BlockData;
+import com.sk89q.worldedit.command.BiomeCommands;
 import com.sk89q.worldedit.command.BrushCommands;
+import com.sk89q.worldedit.command.ChunkCommands;
 import com.sk89q.worldedit.command.ClipboardCommands;
 import com.sk89q.worldedit.command.FlattenedClipboardTransform;
 import com.sk89q.worldedit.command.GeneralCommands;
+import com.sk89q.worldedit.command.GenerationCommands;
 import com.sk89q.worldedit.command.HistoryCommands;
 import com.sk89q.worldedit.command.NavigationCommands;
 import com.sk89q.worldedit.command.RegionCommands;
 import com.sk89q.worldedit.command.SchematicCommands;
 import com.sk89q.worldedit.command.ScriptingCommands;
+import com.sk89q.worldedit.command.SnapshotCommands;
+import com.sk89q.worldedit.command.SnapshotUtilCommands;
+import com.sk89q.worldedit.command.SuperPickaxeCommands;
 import com.sk89q.worldedit.command.ToolCommands;
 import com.sk89q.worldedit.command.ToolUtilCommands;
+import com.sk89q.worldedit.command.UtilityCommands;
+import com.sk89q.worldedit.command.WorldEditCommands;
 import com.sk89q.worldedit.command.composition.SelectionCommand;
 import com.sk89q.worldedit.command.tool.AreaPickaxe;
 import com.sk89q.worldedit.command.tool.BrushTool;
@@ -57,6 +65,7 @@ import com.sk89q.worldedit.extent.transform.BlockTransformExtent;
 import com.sk89q.worldedit.function.entity.ExtentEntityCopy;
 import com.sk89q.worldedit.function.mask.BlockMask;
 import com.sk89q.worldedit.function.mask.FuzzyBlockMask;
+import com.sk89q.worldedit.function.mask.MaskUnion;
 import com.sk89q.worldedit.function.mask.Masks;
 import com.sk89q.worldedit.function.mask.OffsetMask;
 import com.sk89q.worldedit.function.mask.SolidBlockMask;
@@ -83,6 +92,7 @@ import com.sk89q.worldedit.regions.selector.CuboidRegionSelector;
 import com.sk89q.worldedit.session.PasteBuilder;
 import com.sk89q.worldedit.session.SessionManager;
 import com.sk89q.worldedit.session.request.Request;
+import com.sk89q.worldedit.util.command.SimpleDispatcher;
 import com.sk89q.worldedit.util.command.parametric.ParameterData;
 import com.sk89q.worldedit.util.command.parametric.ParametricBuilder;
 import com.sk89q.worldedit.util.command.parametric.ParametricCallable;
@@ -344,6 +354,14 @@ public class Fawe {
             SessionManager.inject(); // Faster custom session saving + Memory improvements
             Request.inject(); // Custom pattern extent
             // Commands
+            BiomeCommands.inject(); // Translations + Optimizations
+            ChunkCommands.inject(); // Translations + Optimizations
+            GenerationCommands.inject(); // Translations + Optimizations
+            SnapshotCommands.inject(); // Translations + Optimizations
+            SnapshotUtilCommands.inject(); // Translations + Optimizations
+            SuperPickaxeCommands.inject(); // Translations + Optimizations
+            UtilityCommands.inject(); // Translations + Optimizations
+            WorldEditCommands.inject(); // Translations + Optimizations
             BrushCommands.inject(); // Translations + heightmap
             ToolCommands.inject(); // Translations + inspect
             ClipboardCommands.inject(); // Translations + lazycopy + paste optimizations
@@ -408,7 +426,8 @@ public class Fawe {
             FuzzyBlockMask.inject(); // Optimizations
             OffsetMask.inject(); // Optimizations
             DefaultMaskParser.inject(); // Add new masks
-            Masks.inject(); //
+            Masks.inject(); // Optimizations
+            MaskUnion.inject(); // Optimizations
             // Operations
             Operations.inject(); // Optimizations
             ForwardExtentCopy.inject(); // Fixes + optimizations
@@ -439,6 +458,7 @@ public class Fawe {
             try {
                 CommandManager.inject(); // Async commands
                 PlatformManager.inject(); // Async brushes / tools
+                SimpleDispatcher.inject(); // Optimize perm checks
             } catch (Throwable e) {
                 debug("====== UPDATE WORLDEDIT TO 6.1.1 ======");
                 MainUtil.handleError(e, false);
